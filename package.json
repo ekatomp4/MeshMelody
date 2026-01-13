@@ -1,0 +1,28 @@
+{
+  "name": "meshmelody",
+  "version": "1.0.0",
+  "description": "A collaborative app for making music!",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app/index.js",
+    "dev": "nodemon app/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ekatomp4/MeshMelody.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ekatomp4/MeshMelody/issues"
+  },
+  "homepage": "https://github.com/ekatomp4/MeshMelody#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  },
+  "type": "module"
+}
