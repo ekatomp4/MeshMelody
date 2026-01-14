@@ -19,7 +19,9 @@
   },
   "homepage": "https://github.com/ekatomp4/MeshMelody#readme",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

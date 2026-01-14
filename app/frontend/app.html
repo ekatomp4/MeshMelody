@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App</title>
+    <style>
+        main {
+            display: none;
+        }
+
+        main.active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app-root"></div>
+
+    <script>
+        const req = JSON.parse(`[[DATA]]`);
+        // frontend loader here
+        const appRoot = document.getElementById('app-root');
+        // have cache
+
+        const pageCache = {};
+
+        // TODO HAVE CACHING
+        async function loadPage(pathHeirarchy) {
+
+            if (pathHeirarchy.length === 0 || (pathHeirarchy.length === 1 && pathHeirarchy[0] === '')) {
+                pathHeirarchy = ['home'];
+            }
+
+            // hide all
+            const elements = appRoot.children;
+            for (let i = 0; i < elements.length; i++) {
+                elements[i].classList.remove('active');
+            }
+
+            // check if page is in cache
+            if (pageCache[pathHeirarchy[0]]) {
+                const element = pageCache[pathHeirarchy[0]];
+                element.classList.add('active');
+                appRoot.appendChild(element);
+                return;
+            }
+
+            // not in cache, fetch it
+            let pageContent = null;
+            let isError = false;
+
+            try {
+                const response = await fetch(`/page/${pathHeirarchy[0]}`);
+
+                if (!response.ok) {
+                    // Handle HTTP errors (404, 500, etc.)
+                    pageContent = "404 NOT FOUND";
+                    console.error("Failed to load page:", pathHeirarchy[0], response.status);
+                    isError = true;
+                }
+
+                pageContent = await response.text();
+            } catch (e) {
+                // Handle network errors
+                pageContent = "404 NOT FOUND";
+                console.error("Network error while loading page:", pathHeirarchy[0], e);
+                isError = true;
+            }
+
+            if(isError) {
+                pageContent = `<main class="active">
+                                <h1>404 NOT FOUND</h1>
+                             </main>`;
+            }
+
+
+            const elementParsed = new DOMParser().parseFromString(pageContent, 'text/html');
+            const element = elementParsed.body.firstChild;
+            if (!element) {
+                console.error("Failed to load page:", pathHeirarchy[0]);
+                return;
+            }
+            element.classList.add('active');
+            appRoot.appendChild(element);
+
+            console.log("Caching page", pathHeirarchy[0]);
+            pageCache[pathHeirarchy[0]] = element;
+        }
+
+        loadPage(req.pathHeirarchy);
+        
+
+    </script>
+
+    <script src="/all/all.js" type="module"></script>
+</body>
+
+</html>

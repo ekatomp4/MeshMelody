@@ -13,77 +13,52 @@ const __dirname = path.dirname(__filename);
 const CONFIG = getConfig();
 const app = express();
 
-/* =========================
-   PAGE CACHE
-========================= */
+import Socket from './backend/Socket.js';
+Socket.init(app, CONFIG.WS_PORT);
 
-const cachedPages = {};
-
-// preload all valid pages from CONSTANTS.validPages
-for (let i = 0; i < CONSTANTS.validPages.length; i++) {
-    const page = CONSTANTS.validPages[i];
-    const pagePath = path.join(
-        __dirname,
-        'frontend',
-        'pages',
-        page,
-        `${page}.html`
-    );
-    cachedPages[page] = fs.readFileSync(pagePath, 'utf-8');
-}
-
-/* helper function */
-function getPageData(page) {
-    if (cachedPages[page]) {
-        return cachedPages[page];
-    }
-
-    const pagePath = path.join(
-        __dirname,
-        'frontend',
-        'pages',
-        page,
-        `${page}.html`
-    );
-
-    const pageData = fs.readFileSync(pagePath, 'utf-8');
-    cachedPages[page] = pageData;
-    return pageData;
-}
-
-/* =========================
-   STATIC FILES
-========================= */
 
 app.use(express.static(path.join(__dirname, 'frontend')));
 
 /* =========================
-   ROUTING (CATCH-ALL)
+   PAGE CACHE
 ========================= */
 
-app.use((req, res) => {
+app.get('/page/:page', (req, res) => {
+    const page = req.params.page;
+    // serve index and pass the requested page
     try {
-        // normalize path
-        const hierarchy = req.path.split('/').filter(Boolean);
-
-        // explicitly handle "/"
-        const page = (hierarchy.length === 0 || hierarchy[0] === '') ? 'home' : hierarchy[hierarchy.length - 1];
-
-        // attempt to serve the page from filesystem/cache
-        
-        const fileData = getPageData(page);
-        res.send(fileData);
-
+        const pagePath = path.join(__dirname, 'frontend', 'pages', page, page + '.html');
+        const pageContent = fs.readFileSync(pagePath, 'utf-8');
+        res.send(pageContent);
     } catch (e) {
-        // fallback to cached "error" page — fully treated like a normal route
-        res.status(404).send(
-            getPageData('error').replace(
-                '[[IMPORT_DATA]]',
-                JSON.stringify({ message: '404 - Page Not Found' })
-            )
-        );
+        res.status(404).send('Page not found');
     }
+    
 });
+
+const appPath = path.join(__dirname, 'frontend', 'app.html');
+const appPage = fs.readFileSync(appPath, 'utf-8');
+
+const staticAssets = ["css", "js", "jpg", "png", "svg", "gif", "webm", "mp4", "ogg", "wav", "mp3", "ico", "json"];
+app.use((req, res) => {
+
+    // serve static assets
+    if(staticAssets.some(ext => req.path.endsWith(ext))) {
+        res.sendFile(path.join(__dirname, 'frontend', req.path));
+        return;
+    }
+
+    const pathHeirarchy = req.path.split("/").filter(p => p.length > 0);
+    // serve index and pass the requested page
+
+    // replace [[DATA]] with initial data
+    const data = {
+        pathHeirarchy: pathHeirarchy,
+    };
+    const finalPage = appPage.replace('[[DATA]]', JSON.stringify(data));
+    res.send(finalPage);
+});
+
 
 /* =========================
    START SERVER
