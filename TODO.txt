@@ -4,3 +4,10 @@ not nested tho just single pages as blocks
 .pass backend data as const MM = JSON.parse(`[[IMPORT_DATA]]`) to quickily pass without fetching
 
 .setup websockets and router for websocket based requests
+
+Ideas:
+    .Auto help with music
+    .voice / key detection
+    .sheet music generation
+    .known song accuracy testing
+    .live collaboration

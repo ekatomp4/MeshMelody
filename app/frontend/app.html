@@ -5,22 +5,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>App</title>
-    <style>
-        main {
-            display: none;
-        }
-
-        main.active {
-            display: block;
-        }
-    </style>
+    <link rel="stylesheet" href="/all/all.css">
 </head>
 
 <body>
 
+    <nav>
+        <button onclick="loadPage(['home'])">Home</button>
+        <button onclick="loadPage(['auth'])">Login</button>
+        <button onclick="loadPage(['auth'])">Register</button>
+    </nav>
+
     <div id="app-root"></div>
 
     <script>
+
+
+        // Handle back/forward buttons globally
+        window.onpopstate = function (event) {
+            const pathHeirarchy = window.location.pathname.slice(1).split('/');
+        };
+
+        // Change the URL and load a page
+        function editPath(path) {
+            const newUrl = '/' + path;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+            const pathHeirarchy = path.split('/');
+        }
+
+        window.editPath = editPath;
+
+
+
         const req = JSON.parse(`[[DATA]]`);
         // frontend loader here
         const appRoot = document.getElementById('app-root');
@@ -30,69 +46,58 @@
 
         // TODO HAVE CACHING
         async function loadPage(pathHeirarchy) {
-
             if (pathHeirarchy.length === 0 || (pathHeirarchy.length === 1 && pathHeirarchy[0] === '')) {
                 pathHeirarchy = ['home'];
             }
 
-            // hide all
             const elements = appRoot.children;
-            for (let i = 0; i < elements.length; i++) {
-                elements[i].classList.remove('active');
-            }
+            for (let i = 0; i < elements.length; i++) elements[i].classList.remove('active');
 
-            // check if page is in cache
             if (pageCache[pathHeirarchy[0]]) {
                 const element = pageCache[pathHeirarchy[0]];
                 element.classList.add('active');
                 appRoot.appendChild(element);
+                editPath(pathHeirarchy.join('/'));
                 return;
             }
 
-            // not in cache, fetch it
             let pageContent = null;
-            let isError = false;
-
             try {
                 const response = await fetch(`/page/${pathHeirarchy[0]}`);
-
-                if (!response.ok) {
-                    // Handle HTTP errors (404, 500, etc.)
-                    pageContent = "404 NOT FOUND";
-                    console.error("Failed to load page:", pathHeirarchy[0], response.status);
-                    isError = true;
-                }
-
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 pageContent = await response.text();
             } catch (e) {
-                // Handle network errors
-                pageContent = "404 NOT FOUND";
-                console.error("Network error while loading page:", pathHeirarchy[0], e);
-                isError = true;
+                pageContent = `<main class="active"><h1>404 NOT FOUND</h1></main>`;
             }
 
-            if(isError) {
-                pageContent = `<main class="active">
-                                <h1>404 NOT FOUND</h1>
-                             </main>`;
-            }
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = pageContent.trim(); // use a container
+            const element = tempDiv.firstElementChild; // ensures you get an element, not text node
+            if (!element) return console.error("Failed to parse page", pathHeirarchy[0]);
 
+            // Move scripts out and execute them properly
+            const scripts = element.querySelectorAll('script');
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                Array.from(oldScript.attributes).forEach(attr =>
+                    newScript.setAttribute(attr.name, attr.value)
+                );
+                newScript.text = oldScript.text;
+                document.body.appendChild(newScript); // append to live DOM to execute
+                oldScript.remove(); // remove original
+            });
 
-            const elementParsed = new DOMParser().parseFromString(pageContent, 'text/html');
-            const element = elementParsed.body.firstChild;
-            if (!element) {
-                console.error("Failed to load page:", pathHeirarchy[0]);
-                return;
-            }
             element.classList.add('active');
             appRoot.appendChild(element);
 
-            console.log("Caching page", pathHeirarchy[0]);
             pageCache[pathHeirarchy[0]] = element;
+
+            editPath(pathHeirarchy.join('/'));
         }
 
+
         loadPage(req.pathHeirarchy);
-        
+
 
     </script>
 

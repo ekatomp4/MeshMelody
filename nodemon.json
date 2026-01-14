@@ -1,0 +1,7 @@
+{
+    "ext": "js,mjs,cjs,ts,py,html,css,etc",
+    "ignore": [
+        "*.json",
+        "**/*.json"
+    ]
+}
