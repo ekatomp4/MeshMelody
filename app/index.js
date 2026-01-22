@@ -20,6 +20,22 @@ Socket.init(app, CONFIG.WS_PORT);
 app.use(express.static(path.join(__dirname, 'frontend')));
 
 /* =========================
+    API
+========================= */
+
+import APIRoutes from './backend/api/APIRoutes.js';
+import { doesConnectionExist } from './backend/classes/ws/Connection.js';
+for(const route in APIRoutes) {
+    app.get('/api/' + route, (req, res)=>{
+        if(route.isPrivate && !doesConnectionExist(req.query.token)) {
+            res.status(401).send("Unauthorized");
+        }
+        const token = req.query.token ? req.query.token : null;
+        APIRoutes[route].fn(req, res, token);
+    });
+}
+
+/* =========================
    PAGE CACHE
 ========================= */
 

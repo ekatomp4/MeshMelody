@@ -1,13 +1,13 @@
 import http from "http";
 import { WebSocketServer } from "ws";
 
-import Connection from "./classes/ws/Connection.js";
+import {Connection, ConnectionList} from "./classes/ws/Connection.js";
 import SocketResponse from "./classes/ws/SocketResponse.js";
 
 class Socket {
     static server = null;
     static wss = null;
-    static connections = new Set();
+    static connections = ConnectionList;
 
     static getConnectionAmount() {
         return this.connections.size;
@@ -26,6 +26,8 @@ class Socket {
             ws.on("message", (data) => {
                 connection.handleMessage(data);
             });
+
+            ws.on("close", () => Socket.removeConnection(connection));
         });
 
         this.server.listen(port, () => {

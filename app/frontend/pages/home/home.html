@@ -1,4 +1,11 @@
 <main>
     <h1>Home</h1>
     <button onclick="testSend()">Test Send</button>
+    <button onclick="sendPing()">Send Ping</button>
+    <script>
+        async function sendPing() {
+            const data = await Backend.fetch("ping");
+            console.log(data);
+        }
+    </script>
 </main>

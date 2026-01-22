@@ -31,15 +31,45 @@ class Socket {
             }
 
             console.log("Received message from server:", message);
+            if(message.token) {
+                sessionStorage.setItem("token", message.token);
+            }
             // Handle incoming messages from the server
         }
     }
 }
-Socket.init();
 
+Socket.init();
+window.Socket = Socket;
 
 
 function testSend() {
     Socket.send({ fn: "ping" });
 }
 window.testSend = testSend;
+
+
+class Backend {
+    static async fetch(path, data) {
+
+        const token = sessionStorage.getItem("token");
+        data = data || {};
+        data.token = token;
+
+        let formattedPath = path.startsWith("/") ? path : "/" + path;
+
+        if(data) {
+            formattedPath += "?";
+            for(const param in data) {
+                formattedPath += `${param}=${data[param]}&`;
+            }
+        }
+        
+
+
+        const res = await fetch(`/api${formattedPath}`, data);
+        const txt = await res.text();
+        return txt;
+    }
+}
+window.Backend = Backend;

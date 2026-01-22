@@ -1,9 +1,7 @@
-.make single page router for frontend and caching and just fetch the backend component,
-not nested tho just single pages as blocks
 
 .pass backend data as const MM = JSON.parse(`[[IMPORT_DATA]]`) to quickily pass without fetching
 
-.setup websockets and router for websocket based requests
+.rate limiting
 
 Ideas:
     .Auto help with music
@@ -11,3 +9,8 @@ Ideas:
     .sheet music generation
     .known song accuracy testing
     .live collaboration
+
+Done:
+.setup websockets and router for websocket based requests
+.make single page router for frontend and caching and just fetch the backend component,
+not nested tho just single pages as blocks
