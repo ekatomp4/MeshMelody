@@ -1,6 +1,16 @@
 <main>
     <h1>Auth</h1>
 
+    <button onclick="login()">Login</button>
+
+    <script>
+        function login() {
+            const username = "JohnDoe";
+            const password = 'testtest';
+            Backend.fetch("login", { username, password }).then(data => console.log(data));
+        }
+    </script>
+
     <script src="/pages/auth/auth.js" type="module"></script>
     <script>console.log('Loaded auth.js from page');</script>
 </main>

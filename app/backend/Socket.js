@@ -21,7 +21,7 @@ class Socket {
             const connection = new Connection(ws);
             this.connections.add(connection);
 
-            console.log("New WebSocket connection established");
+            console.log("new WS connection, Length:", this.connections.size);
 
             ws.on("message", (data) => {
                 connection.handleMessage(data);

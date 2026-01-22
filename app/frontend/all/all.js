@@ -50,6 +50,19 @@ window.testSend = testSend;
 
 
 class Backend {
+
+    static async post(path, data) {
+        const token = sessionStorage.getItem("token");
+        data = data || {};
+        data.token = token;    
+
+        let formattedPath = path.startsWith("/") ? path : "/" + path;
+
+        const res = await fetch(`/api${formattedPath}`, { method: "POST", body: JSON.stringify(data) });
+        const txt = await res.text();
+        return txt;
+    }
+
     static async fetch(path, data) {
 
         const token = sessionStorage.getItem("token");
@@ -71,5 +84,7 @@ class Backend {
         const txt = await res.text();
         return txt;
     }
+    
 }
+Backend.fetch("connect").then(txt => console.log(txt));
 window.Backend = Backend;

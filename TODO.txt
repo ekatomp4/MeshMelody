@@ -2,6 +2,8 @@
 .pass backend data as const MM = JSON.parse(`[[IMPORT_DATA]]`) to quickily pass without fetching
 
 .rate limiting
+.max connections
+.ip fingerprinting to sessions
 
 Ideas:
     .Auto help with music

@@ -3,6 +3,7 @@ import Socket from "../../Socket.js";
 
 import Auth from "../../Auth.js";
 
+
 class Connection {
     constructor(ws) {
         this.ws = ws;
@@ -68,4 +69,13 @@ function doesConnectionExist(token) {
     }
     return false;
 }
-export { Connection, ConnectionList, doesConnectionExist };
+function getConnection(token) {
+    for(const connection of ConnectionList) {
+        if(connection.token === token) {
+            return connection;
+        }
+    }
+    return null;
+}
+
+export { Connection, ConnectionList, doesConnectionExist, getConnection };
