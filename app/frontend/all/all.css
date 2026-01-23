@@ -18,16 +18,34 @@
 
 * {
     box-sizing: border-box;
+}
+*:not(input):not(textarea):not(select) {
+    user-select: none;
     color: var(--text);
 }
 
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--accent);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: var(--border-radius);
+}
+
 body {
+    overflow-y: hidden;
     background-color: var(--bg);
     margin: 0;
     font-family: Arial, sans-serif;
 }
 
 main {
+    overflow-y: auto;
     display: none;
     padding: var(--main-inset)
 }
@@ -60,3 +78,4 @@ button:hover {
     box-shadow: var(--shadow);
     cursor: pointer;
 }
+

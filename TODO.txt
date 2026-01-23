@@ -3,6 +3,7 @@
 
 .rate limiting
 .max connections
+.auto session refreshing & session persistence
 .ip fingerprinting to sessions
 
 Ideas:

@@ -1,16 +1,46 @@
 <main>
-    <h1>Auth</h1>
+  <h1>Auth</h1>
 
+  <form id="loginForm">
+    <input
+      id="username"
+      type="text"
+      placeholder="username"
+      autocomplete="username"
+    />
+    <br />
+    <input
+      id="password"
+      type="password"
+      placeholder="password"
+      autocomplete="current-password"
+    />
+    <br />
     <button onclick="login()">Login</button>
+  </form>
 
-    <script>
-        function login() {
-            const username = "JohnDoe";
-            const password = 'testtest';
-            Backend.fetch("login", { username, password }).then(data => console.log(data));
-        }
-    </script>
+  <script>
 
-    <script src="/pages/auth/auth.js" type="module"></script>
-    <script>console.log('Loaded auth.js from page');</script>
+    function login() {
+      const form = document.getElementById("loginForm");
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault(); // stops refresh
+      });
+
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      if (!username || !password) throw new Error("No username or password");
+      
+      Backend.fetch("login", { username, password }).then((data) =>
+        console.log(data),
+      );
+    }
+
+  </script>
+
+  <script src="/pages/auth/auth.js" type="module"></script>
+  <script>
+    console.log("Loaded auth.js from page");
+  </script>
 </main>

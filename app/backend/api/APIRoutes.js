@@ -1,28 +1,27 @@
-import { doesConnectionExist, getConnection } from "../classes/ws/Connection.js";
-import Auth from "../Auth.js";
+import { doesConnectionExist, getConnection, ConnectionList } from "../classes/ws/Connection.js";
 
 const APIRoutes = {
     "ping": {
         isPrivate: true,
         fn: (req, res, token) => {
             console.log(`Ping received from ${token}`);
-            res.send("pong")
+            return "pong";
         }
     },
     "connect": {
-        isPrivate: true,
+        isPrivate: false,
         fn: (req, res, token) => {
-            res.send("Connected");
+            // res.send("Connected");
+            return "Connected";
         }
     },
     "login": {
-        isPrivate: true,
+        isPrivate: false,
         fn: (req, res, token) => {
             // get req
 
             const data = req.query;
 
-            console.log(data);
             const connectionReference = getConnection(token);
             // username, password, token
             const authInput = {
@@ -33,7 +32,16 @@ const APIRoutes = {
 
             // this doesnt exist
             // console.log(connectionReference)
-            // connectionReference.authenticate(authInput);
+            if(!connectionReference) {
+                res.status(401).send("Unauthorized");
+                return;
+            }
+            const isAuthenticated = connectionReference.authenticate(authInput);
+            if(!isAuthenticated) {
+                res.status(401).send("Unauthorized");
+                return;
+            }
+            return "Successfully logged in";
         }
     }
 };

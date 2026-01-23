@@ -24,7 +24,8 @@ app.use(express.static(path.join(__dirname, 'frontend')));
 ========================= */
 
 import APIRoutes from './backend/api/APIRoutes.js';
-import { doesConnectionExist } from './backend/classes/ws/Connection.js';
+import { doesConnectionExist, getConnection } from './backend/classes/ws/Connection.js';
+import { get } from 'http';
 for(const route in APIRoutes) {
 
     if(APIRoutes[route].method === "POST") {
@@ -42,11 +43,26 @@ for(const route in APIRoutes) {
     } else {
 
         app.get('/api/' + route, (req, res)=>{
-            if(route.isPrivate && !doesConnectionExist(req.query.token)) {
-                res.status(401).send("Unauthorized");
+
+            const isPrivate = APIRoutes[route].isPrivate;
+            const connection = getConnection(req.query.token);
+
+            if(connection && !connection.authenticated && isPrivate) {
+                if(!connection) {
+                    res.status().send("Unauthorized, not connected");
+                    return;
+                }
+                res.status(401).send("Unauthorized, not authenticated");
+                return;
             }
+
             const token = req.query.token ? req.query.token : null;
-            APIRoutes[route].fn(req, res, token);
+            const response = APIRoutes[route].fn(req, res, token);
+
+            if(!response) return; // if there is no response
+
+            const formattedResponse = typeof response === "string" ? JSON.stringify({message: response}) : JSON.stringify(response);
+            res.send(formattedResponse);
         });
 
     }
@@ -73,19 +89,19 @@ app.get('/page/:page', (req, res) => {
 const appPath = path.join(__dirname, 'frontend', 'app.html');
 const appPage = fs.readFileSync(appPath, 'utf-8');
 
-const staticAssets = ["jpg", "png", "svg", "gif", "webm", "mp4", "ogg", "wav", "mp3", "ico", "json"];
+const staticAssets = ["css"];
 app.use((req, res) => {
 
     // // serve static assets
-    // if(staticAssets.some(ext => req.path.endsWith(ext))) {
-    //     try {
-    //         res.sendFile(path.join(__dirname, 'frontend', req.path));
-    //         return;
-    //     } catch (e) {
-    //         console.error("Error in static asset", req.path, e);
-    //         res.status(404).send('Static asset not found');
-    //     }
-    // }
+    if(staticAssets.some(ext => req.path.endsWith(ext))) {
+        try {
+            res.sendFile(path.join(__dirname, 'frontend', req.path));
+            return;
+        } catch (e) {
+            console.error("Error in static asset", req.path, e);
+            res.status(404).send('Static asset not found');
+        }
+    }
 
     const pathHeirarchy = req.path.split("/").filter(p => p.length > 0);
     // serve index and pass the requested page

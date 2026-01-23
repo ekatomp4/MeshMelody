@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/ekatomp4/MeshMelody#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "express": "^5.2.1",
     "socket.io": "^4.8.3",
     "ws": "^8.19.0"
