@@ -148,3 +148,20 @@ class User {
 }
 window.User = User;
 window.User.init();
+
+import SoundPlayer from "./modules/SoundPlayer.js";
+
+let hasPlayed = false;
+window.addEventListener("click", async () => {
+    if(!hasPlayed) {
+        
+        hasPlayed = true;
+
+        for(const instrName in SoundPlayer.instrumentList) {
+            const instr = SoundPlayer.getInstrument(instrName);
+            await instr.playScale("C", "major");
+        }
+
+        
+    }
+});
