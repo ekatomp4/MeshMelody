@@ -101,3 +101,7 @@ main.pianoroll {
     background: #555;
     height: 100%;
 }
+
+.note.selected {
+    outline: 2px solid #ffcc00;
+}

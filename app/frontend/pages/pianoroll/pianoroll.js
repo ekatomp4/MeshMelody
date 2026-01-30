@@ -2,48 +2,43 @@
 // Piano Roll Setup
 // =======================
 
-// Note names starting from E0 to E6 (52 notes total from E0-E6)
-// But we need 127 notes ending on E, so we'll go from E-2 to E8
 function setupPianoRoll() {
     const notes = [];
     const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
     for (let i = 127; i >= 1; i--) {
-        const noteIndex = (i + 8) % 12;
+        const idx = (i + 8) % 12;
         const octave = Math.floor((i + 8) / 12) - 2;
-        const noteName = noteNames[noteIndex] + octave;
-        const isBlack = noteNames[noteIndex].includes('#');
-        notes.push({ name: noteName, isBlack });
+        notes.push({
+            name: noteNames[idx] + octave,
+            isBlack: noteNames[idx].includes('#')
+        });
     }
 
     const pianoKeys = document.getElementById('piano-keys');
-    notes.forEach(note => {
-        const key = document.createElement('div');
-        key.className = `key ${note.isBlack ? 'black' : 'white'}`;
-        key.textContent = note.name;
-        pianoKeys.appendChild(key);
+    notes.forEach(n => {
+        const k = document.createElement('div');
+        k.className = `key ${n.isBlack ? 'black' : 'white'}`;
+        k.textContent = n.name;
+        pianoKeys.appendChild(k);
     });
 
     const grid = document.getElementById('grid');
-    const rollWidth = 4000;
-    const rollHeight = notes.length * 20;
+    grid.style.width = '4000px';
+    grid.style.height = notes.length * 20 + 'px';
 
-    grid.style.width = rollWidth + 'px';
-    grid.style.height = rollHeight + 'px';
-
-    notes.forEach((note, index) => {
-        const line = document.createElement('div');
-        line.className = `grid-line ${note.isBlack ? 'black-note' : 'white-note'}`;
-        line.style.top = (index * 20) + 'px';
-        grid.appendChild(line);
+    notes.forEach((n, i) => {
+        const l = document.createElement('div');
+        l.className = `grid-line ${n.isBlack ? 'black-note' : 'white-note'}`;
+        l.style.top = i * 20 + 'px';
+        grid.appendChild(l);
     });
 
-    const beatWidth = 30;
-    for (let i = 0; i < rollWidth / beatWidth; i++) {
-        const line = document.createElement('div');
-        line.className = i % 16 === 0 ? 'bar-line' : 'beat-line';
-        line.style.left = (i * beatWidth) + 'px';
-        grid.appendChild(line);
+    for (let i = 0; i < 4000 / 30; i++) {
+        const l = document.createElement('div');
+        l.className = i % 16 === 0 ? 'bar-line' : 'beat-line';
+        l.style.left = i * 30 + 'px';
+        grid.appendChild(l);
     }
 
     const rollArea = document.getElementById('roll-area');
@@ -62,7 +57,7 @@ const GRID = {
     BEAT_WIDTH: 30,
     NOTE_HEIGHT: 20,
     MIN_WIDTH: 30,
-    RESIZE_HANDLE: 6 // px from right edge
+    RESIZE_HANDLE: 6
 };
 
 // =======================
@@ -76,11 +71,11 @@ function snapToGrid(x, y) {
     };
 }
 
-function getLocalPos(e, container) {
-    const rect = container.getBoundingClientRect();
+function getLocalPos(e, el) {
+    const r = el.getBoundingClientRect();
     return {
-        x: e.clientX - rect.left + container.scrollLeft,
-        y: e.clientY - rect.top + container.scrollTop
+        x: e.clientX - r.left + el.scrollLeft,
+        y: e.clientY - r.top + el.scrollTop
     };
 }
 
@@ -89,20 +84,44 @@ function getLocalPos(e, container) {
 // =======================
 
 function createNote({ x, y, noteName }) {
-    const note = document.createElement('div');
+    const n = document.createElement('div');
+    n.className = 'note';
+    n.style.position = 'absolute';
+    n.style.left = x + 'px';
+    n.style.top = y + 'px';
+    n.style.width = GRID.BEAT_WIDTH + 'px';
+    n.style.height = GRID.NOTE_HEIGHT + 'px';
+    n.style.background = '#4a9eff';
+    n.style.border = '1px solid #2070d0';
+    n.dataset.note = noteName;
+    return n;
+}
 
-    note.className = 'note';
-    note.style.position = 'absolute';
-    note.style.left = x + 'px';
-    note.style.top = y + 'px';
-    note.style.width = GRID.BEAT_WIDTH + 'px';
-    note.style.height = GRID.NOTE_HEIGHT + 'px';
-    note.style.background = '#4a9eff';
-    note.style.border = '1px solid #2070d0';
+// =======================
+// Selection
+// =======================
 
-    note.dataset.note = noteName;
+const selectedNotes = new Set();
 
-    return note;
+function clearSelection() {
+    selectedNotes.forEach(n => n.classList.remove('selected'));
+    selectedNotes.clear();
+}
+
+function selectExclusive(note) {
+    clearSelection();
+    selectedNotes.add(note);
+    note.classList.add('selected');
+}
+
+function toggleSelection(note) {
+    if (selectedNotes.has(note)) {
+        selectedNotes.delete(note);
+        note.classList.remove('selected');
+    } else {
+        selectedNotes.add(note);
+        note.classList.add('selected');
+    }
 }
 
 // =======================
@@ -110,16 +129,15 @@ function createNote({ x, y, noteName }) {
 // =======================
 
 const state = {
-    mode: null, // "resize" | "drag"
-    note: null,
-    startX: 0,
-    startY: 0,
-    offsetX: 0,
-    offsetY: 0
+    mode: null,        // drag | resize
+    anchor: null,
+    startMouseX: 0,
+    startMouseY: 0,
+    snapshot: []       // frozen list
 };
 
 // =======================
-// Note Placement + Editing
+// Interaction Logic
 // =======================
 
 function extendedKeyPlace() {
@@ -127,95 +145,112 @@ function extendedKeyPlace() {
     const rollArea = document.getElementById('roll-area');
     const grid = document.getElementById('grid');
 
-    // Cursor indicator
-    rollArea.addEventListener('mousemove', (e) => {
-        const target = e.target;
-        if (!target.classList.contains('note')) {
+    rollArea.addEventListener('mousemove', e => {
+        const t = e.target;
+        if (!t.classList.contains('note')) {
             rollArea.style.cursor = 'default';
             return;
         }
-
-        const rect = target.getBoundingClientRect();
-        if (rect.right - e.clientX <= GRID.RESIZE_HANDLE) {
-            rollArea.style.cursor = 'ew-resize';
-        } else {
-            rollArea.style.cursor = 'grab';
-        }
+        const r = t.getBoundingClientRect();
+        rollArea.style.cursor =
+            r.right - e.clientX <= GRID.RESIZE_HANDLE ? 'ew-resize' : 'grab';
     });
 
-    rollArea.addEventListener('mousedown', (e) => {
+    rollArea.addEventListener('mousedown', e => {
         const pos = getLocalPos(e, rollArea);
         const snapped = snapToGrid(pos.x, pos.y);
-        const target = e.target;
+        const t = e.target;
 
-        // EXISTING NOTE
-        if (target.classList.contains('note')) {
-            const rect = target.getBoundingClientRect();
+        if (t.classList.contains('note')) {
 
-            // RESIZE
-            if (rect.right - e.clientX <= GRID.RESIZE_HANDLE) {
-                state.mode = 'resize';
-                state.note = target;
-                state.startX = parseFloat(target.style.left);
-                return;
-            }
+            // SELECTION FIRST (CRITICAL)
+            if (e.shiftKey) toggleSelection(t);
+            else selectExclusive(t);
 
-            // DRAG
-            state.mode = 'drag';
-            state.note = target;
-            state.offsetX = pos.x - parseFloat(target.style.left);
-            state.offsetY = pos.y - parseFloat(target.style.top);
+            const rect = t.getBoundingClientRect();
+            state.mode =
+                rect.right - e.clientX <= GRID.RESIZE_HANDLE ? 'resize' : 'drag';
+
+            state.anchor = t;
+            state.startMouseX = pos.x;
+            state.startMouseY = pos.y;
+
+            // FREEZE SNAPSHOT AFTER SELECTION
+            state.snapshot = [...selectedNotes].map(n => ({
+                note: n,
+                left: parseFloat(n.style.left),
+                top: parseFloat(n.style.top),
+                width: parseFloat(n.style.width)
+            }));
+
             return;
         }
 
-        // CREATE NEW NOTE
-        const noteIndex = Math.floor(snapped.y / GRID.NOTE_HEIGHT);
-        const noteName = pianoKeys.children[noteIndex]?.textContent;
+        clearSelection();
+
+        const idx = Math.floor(snapped.y / GRID.NOTE_HEIGHT);
+        const noteName = pianoKeys.children[idx]?.textContent;
         if (!noteName) return;
 
-        const note = createNote({
-            x: snapped.x,
-            y: snapped.y,
-            noteName
-        });
-
-        grid.appendChild(note);
+        const n = createNote({ x: snapped.x, y: snapped.y, noteName });
+        grid.appendChild(n);
+        selectExclusive(n);
 
         state.mode = 'resize';
-        state.note = note;
-        state.startX = snapped.x;
+        state.anchor = n;
+        state.startMouseX = snapped.x;
 
-        console.log(`Starts at X: ${snapped.x}, Y: ${snapped.y} - Note: ${noteName}`);
+        state.snapshot = [{
+            note: n,
+            left: snapped.x,
+            top: snapped.y,
+            width: GRID.BEAT_WIDTH
+        }];
     });
 
-    rollArea.addEventListener('mousemove', (e) => {
-        if (!state.note) return;
+    rollArea.addEventListener('mousemove', e => {
+        if (!state.mode) return;
 
         const pos = getLocalPos(e, rollArea);
 
-        if (state.mode === 'resize') {
-            const snappedX = snapToGrid(pos.x, 0).x;
-            const width = snappedX - state.startX;
-            if (width >= GRID.MIN_WIDTH) {
-                state.note.style.width = width + 'px';
-            }
+        if (state.mode === 'drag') {
+            const dx = snapToGrid(pos.x - state.startMouseX, 0).x;
+            const dy = snapToGrid(0, pos.y - state.startMouseY).y;
+
+            state.snapshot.forEach(s => {
+                s.note.style.left = s.left + dx + 'px';
+                s.note.style.top = s.top + dy + 'px';
+            });
         }
 
-        if (state.mode === 'drag') {
-            const snapped = snapToGrid(
-                pos.x - state.offsetX,
-                pos.y - state.offsetY
-            );
-            state.note.style.left = snapped.x + 'px';
-            state.note.style.top = snapped.y + 'px';
+        if (state.mode === 'resize') {
+            const delta =
+                snapToGrid(pos.x - state.startMouseX, 0).x;
+
+            state.snapshot.forEach(s => {
+                s.note.style.width =
+                    Math.max(s.width + delta, GRID.MIN_WIDTH) + 'px';
+            });
         }
     });
 
     rollArea.addEventListener('mouseup', () => {
         state.mode = null;
-        state.note = null;
+        state.anchor = null;
+        state.snapshot = [];
     });
 }
+
+// =======================
+// Delete
+// =======================
+
+document.addEventListener('keydown', e => {
+    if (e.key === "Escape") clearSelection();
+    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+    selectedNotes.forEach(n => n.remove());
+    selectedNotes.clear();
+});
 
 // =======================
 // Init
