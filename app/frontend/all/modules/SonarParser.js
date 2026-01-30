@@ -27,7 +27,7 @@ class SonarParser {
                 if(tokens === "}") bracketDepth--;
             }
 
-            console.log(tokens);
+            // console.log(tokens);
         }
     }
 }
