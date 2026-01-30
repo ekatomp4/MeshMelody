@@ -23,18 +23,46 @@ class SoundPlayer {
 
 }
 
-SoundPlayer.addInstrument("test", new Instrument(SoundPlayer.audioCtx));
-SoundPlayer.addInstrument("piano", new Instrument(SoundPlayer.audioCtx, {
-    type: "triangle",      // softer than square
-    punch: 0.3,            // piano attack
-    punchTime: 0.02,       // very short attack
-    noteSustain: 1.5,      // natural decay
-    filterType: "lowpass",
-    filterFreq: 4000,      // gentle top cutoff
-    layers: 2,             // layered oscillators for richness
-    detune: 5,             // slight detune per layer
-    vibratoDepth: 0,     // vibrato frequency deviation %
-}));
+// SoundPlayer.addInstrument("test", new Instrument(SoundPlayer.audioCtx));
+SoundPlayer.addInstrument("piano",
+    new Instrument(SoundPlayer.audioCtx, {
+        oscillators: [
+            {
+                // fundamental / body
+                type: "sine",
+                volume: 0.18,
+                detune: 0,
+                punch: 0.6,
+                punchTime: 0.1,
+                noteSustain: 0.5,
+                filterType: "lowpass",
+                filterFreq: 2000
+            },
+            {
+                // harmonic brightness (tamed)
+                type: "triangle",
+                volume: 0.08,
+                detune: 0,
+                punch: 0.1,
+                punchTime: 0.04,
+                noteSustain: 0.4,
+                filterType: "lowpass",
+                filterFreq: 2600
+            },
+            {
+                // background vibration
+                type: "sawtooth",
+                volume: 0.01,
+                detune: 0,
+                punch: 0.01,
+                punchTime: 0.04,
+                noteSustain: 1,
+                filterType: "lowpass",
+                filterFreq: 1600
+            }
+        ]
+    })
+);
 
 
 window.SoundPlayer = SoundPlayer;

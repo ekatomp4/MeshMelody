@@ -28,75 +28,80 @@ function noteToFrequency(note, octave = 4) {
 class AudioMixer {
     constructor(audioCtx, options = {}) {
         this.audioCtx = audioCtx;
-        this.options = {
-            volume: 0.2,          // base volume (0-1)
-            type: "sine",         // oscillator type
-            noteSustain: 0.2,     // fade-out duration in seconds
-            punch: 0.2,           // initial attack boost
-            punchTime: 0.05,      // punch duration
-            tuneRange: 0.002,     // random pitch variation per layer
-            detune: 0,            // detune in cents
-            vibratoDepth: 0.005,   // % of frequency, e.g., 0.01 = ±1%
-            vibratoRate: 4,       // cycles per second
-            filterType: "lowpass",// filter type
-            filterFreq: 2000,     // filter cutoff in Hz
-            pan: 0,               // stereo pan (-1 to 1)
-            layers: 1,            // number of oscillators to layer
-            octaveShift: 0,       // shift in octaves (-1, 0, 1, etc.)
-            ...options
+
+        this.defaults = {
+            volume: 0.2,
+            type: "sine",
+            noteSustain: 0.2,
+            punch: 0,
+            punchTime: 0.05,
+            tuneRange: 0,
+            detune: 0,
+            vibratoDepth: 0,
+            vibratoRate: 0,
+            filterType: "lowpass",
+            filterFreq: 2000,
+            pan: 0,
+            octaveShift: 0
         };
+
+        this.oscillators = options.oscillators || [{}];
     }
 
     playNote(note, octave = 4, duration = 0.3) {
         if (!note) return Promise.resolve();
 
-        const { volume, type, noteSustain, punch, punchTime, tuneRange, detune, vibratoDepth, vibratoRate, filterType, filterFreq, pan, layers, octaveShift } = this.options;
-
         const promises = [];
 
-        for (let i = 0; i < layers; i++) {
+        for (const oscOpts of this.oscillators) {
+            const o = { ...this.defaults, ...oscOpts };
+
             promises.push(new Promise(resolve => {
                 const osc = this.audioCtx.createOscillator();
                 const gain = this.audioCtx.createGain();
                 const filter = this.audioCtx.createBiquadFilter();
                 const panner = this.audioCtx.createStereoPanner();
 
-                // slight detune per layer
-                const layerDetune = detune + (Math.random() - 0.5) * 5; // ±5 cents
-
-                // calculate frequency with octave shift
                 const baseFreq = noteToFrequency(note, octave);
-                const layerFreq = baseFreq * Math.pow(2, octaveShift) * (1 + (Math.random() - 0.5) * tuneRange * 2);
+                const freq =
+                    baseFreq *
+                    Math.pow(2, o.octaveShift) *
+                    (1 + (Math.random() - 0.5) * o.tuneRange * 2);
 
-                osc.type = type;
-                osc.frequency.value = layerFreq;
-                osc.detune.value = layerDetune;
+                osc.type = o.type;
+                osc.frequency.value = freq;
+                osc.detune.value = o.detune;
 
-                // filter
-                filter.type = filterType;
-                filter.frequency.value = filterFreq;
+                filter.type = o.filterType;
+                filter.frequency.value = o.filterFreq;
 
-                // pan
-                panner.pan.setValueAtTime(pan, this.audioCtx.currentTime);
+                panner.pan.value = o.pan;
 
-                // gain & punch
-                gain.gain.setValueAtTime(volume, this.audioCtx.currentTime);
-                if (punch > 0) {
-                    gain.gain.setValueAtTime(volume, this.audioCtx.currentTime);
-                    gain.gain.linearRampToValueAtTime(volume + punch, this.audioCtx.currentTime + punchTime);
-                    gain.gain.linearRampToValueAtTime(volume, this.audioCtx.currentTime + punchTime * 2);
+                gain.gain.setValueAtTime(o.volume, this.audioCtx.currentTime);
+
+                if (o.punch > 0) {
+                    gain.gain.linearRampToValueAtTime(
+                        o.volume + o.punch,
+                        this.audioCtx.currentTime + o.punchTime
+                    );
+                    gain.gain.linearRampToValueAtTime(
+                        o.volume,
+                        this.audioCtx.currentTime + o.punchTime * 2
+                    );
                 }
 
-                // vibrato using % of frequency
-                if (vibratoDepth > 0) {
-                    const vibratoOsc = this.audioCtx.createOscillator();
-                    const vibratoGain = this.audioCtx.createGain();
-                    vibratoGain.gain.value = layerFreq * vibratoDepth; // proportional to frequency
-                    vibratoOsc.frequency.value = vibratoRate;
-                    vibratoOsc.connect(vibratoGain);
-                    vibratoGain.connect(osc.frequency);
-                    vibratoOsc.start();
-                    vibratoOsc.stop(this.audioCtx.currentTime + duration + noteSustain);
+                if (o.vibratoDepth > 0) {
+                    const vibOsc = this.audioCtx.createOscillator();
+                    const vibGain = this.audioCtx.createGain();
+
+                    vibGain.gain.value = freq * o.vibratoDepth;
+                    vibOsc.frequency.value = o.vibratoRate;
+
+                    vibOsc.connect(vibGain);
+                    vibGain.connect(osc.frequency);
+
+                    vibOsc.start();
+                    vibOsc.stop(this.audioCtx.currentTime + duration + o.noteSustain);
                 }
 
                 osc.connect(filter);
@@ -106,16 +111,12 @@ class AudioMixer {
 
                 osc.start();
 
-                if (noteSustain > 0) {
-                    const fadeStart = this.audioCtx.currentTime + duration;
-                    gain.gain.setValueAtTime(volume, fadeStart);
-                    gain.gain.linearRampToValueAtTime(0, fadeStart + noteSustain);
-                    osc.stop(fadeStart + noteSustain);
-                    setTimeout(resolve, duration * 1000); // resolve after initial duration
-                } else {
-                    osc.onended = resolve;
-                    osc.stop(this.audioCtx.currentTime + duration);
-                }
+                const fadeStart = this.audioCtx.currentTime + duration;
+                gain.gain.setValueAtTime(o.volume, fadeStart);
+                gain.gain.linearRampToValueAtTime(0, fadeStart + o.noteSustain);
+
+                osc.stop(fadeStart + o.noteSustain);
+                setTimeout(resolve, duration * 1000);
             }));
         }
 
@@ -136,7 +137,13 @@ class Instrument {
     }
 
     playChord(notes, octave = 4, duration = 0.3) {
-        return Promise.all(notes.map(note => this.mixer.playNote(note, octave, duration)));
+        return Promise.all(
+            notes.map(note => this.mixer.playNote(note, octave, duration))
+        );
+    }
+
+    async playSheet() {
+
     }
 
     async playScale(rootNote, scaleType, octave = 4, duration = 0.3) {
@@ -159,6 +166,7 @@ class Instrument {
         }
     }
 }
+
 
 
 export default Instrument;

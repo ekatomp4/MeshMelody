@@ -1,0 +1,19 @@
+instrment guitar {
+
+	prop oscillator  {
+		type: sine;
+		frequency: 400;
+		root: 63;
+		filter: {
+			type: lowpass;
+			frequency: 4000;
+		}
+    }
+    
+    prop pitchMod {
+        base: 2000;
+        top: 6000;
+        effect: 30%;
+    }
+
+}

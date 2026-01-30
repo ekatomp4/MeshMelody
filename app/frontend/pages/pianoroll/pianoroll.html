@@ -68,23 +68,36 @@
         });
         extendedKeyPlace();
     };
+
+    function snapToGrid(x, y) {
+        // find intersection point then nearest note placeholder
+        const beatWidth = 30; // Width of each 16th note
+        const lineX = Math.floor(x / beatWidth) * beatWidth;
+        const lineY = Math.floor(y / 20) * 20;
+        return { x: lineX, y: lineY };
+    }
+
     // note placing
     function extendedKeyPlace() {
         const pianoKeys = document.getElementById('piano-keys');
         const rollArea = document.getElementById('roll-area');
         var isDragging = false;
-// these are waiting to be used (X)
+        // these are waiting to be used (X)
         // ---
         let xl = 30;
         let yl = 20;
         // these are waiting to be used (Y)
         rollArea.addEventListener('click', (e) => {
-            console.log('clicked at x:', e.clientX, 'y:', e.clientY);
+            const snapped = snapToGrid(e.clientX, e.clientY);
+            console.log('clicked at x:', e.clientX, 'y:', e.clientY, 'snapped to x:', snapped.x, 'y:', snapped.y);
         });
         rollArea.addEventListener('mousedown', (e) => {
             const rect = rollArea.getBoundingClientRect();
             xl = e.clientX - rect.left;
             yl = e.clientY - rect.top; 
+            const snapped = snapToGrid(xl, yl);
+            xl = snapped.x;
+            yl = snapped.y;
 
             // add feature where it defines note class based on instrument, etc.
                 currentNote = document.createElement('div');
@@ -115,10 +128,13 @@
             if (isDragging) {
                 console.log('Dragging to x:', xl, 'y:', yl);
                 const rect = rollArea.getBoundingClientRect();
-                const x = e.clientX - rect.left + rollArea.scrollLeft;
+                let x = e.clientX - rect.left + rollArea.scrollLeft;
+                const snapped = snapToGrid(x, yl);
+                x = snapped.x;
                 const width = (x - xl);
+                const minWidth = 30;
                 if (width < 1) return; // Prevent negative width
-                currentNote.style.width = width + 'px';
+                currentNote.style.width = Math.max(width, minWidth) + 'px';
                 // Optionally, you can visualize the drag selection here
             }
         });

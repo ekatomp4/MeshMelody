@@ -26,16 +26,16 @@ class Socket {
         this.socket.onmessage = (event) => {
             let message = JSON.parse(event.data);
 
-            if(message.error) {
+            if (message.error) {
                 console.error("Error from server:", message.error);
             }
 
             try {
                 message = JSON.parse(message.data);
-            } catch(e) {}
+            } catch (e) { }
 
             // console.log("Received message from server:", message);
-            if(message.token && message.token !== sessionStorage.getItem("token")) {
+            if (message.token && message.token !== sessionStorage.getItem("token")) {
                 console.log("Saving session token:", message.token);
                 sessionStorage.setItem("token", message.token);
             }
@@ -67,7 +67,7 @@ class Backend {
     static async post(path, data) {
         const token = sessionStorage.getItem("token");
         data = data || {};
-        data.token = token;    
+        data.token = token;
 
         let formattedPath = path.startsWith("/") ? path : "/" + path;
 
@@ -84,27 +84,27 @@ class Backend {
 
         let formattedPath = path.startsWith("/") ? path : "/" + path;
 
-        if(data) {
+        if (data) {
             formattedPath += "?";
-            for(const param in data) {
+            for (const param in data) {
                 formattedPath += `${param}=${data[param]}&`;
             }
         }
-        
+
 
 
         const res = await fetch(`/api${formattedPath}`, data);
         let txt = await res.text();
 
-        if(txt) {
+        if (txt) {
             try {
                 txt = JSON.parse(txt);
-            } catch(e) {}
+            } catch (e) { }
         }
 
         return txt;
     }
-    
+
 }
 Backend.fetch("connect").then(txt => console.log(txt));
 window.Backend = Backend;
@@ -152,16 +152,53 @@ window.User.init();
 import SoundPlayer from "./modules/SoundPlayer.js";
 
 let hasPlayed = false;
+
+import MusicSheet from "./modules/MusicSheet.js";
+const sheet = new MusicSheet(16, 120);
+sheet.data = [
+
+];
+
 window.addEventListener("click", async () => {
-    if(!hasPlayed) {
-        
+    if (!hasPlayed) {
+
         hasPlayed = true;
 
-        for(const instrName in SoundPlayer.instrumentList) {
-            const instr = SoundPlayer.getInstrument(instrName);
-            await instr.playScale("C", "major");
-        }
+        // for (const instrName in SoundPlayer.instrumentList) {
+        //     const instr = SoundPlayer.getInstrument(instrName);
+        //     await instr.playScale("C", "major", 3);
+        // }
 
+
+        const instr = SoundPlayer.getInstrument("piano");
+        sheet.setInstrument(instr);
+        sheet.play();
+
+        /*   
+        in instr
+        async playProgression(progression = [], octave = 4, duration = 0.3) {
+            // progression = [
+                [note1, note2, note3],
+                [note1, note2, note3],
+            ]
+            // note = { note, duration }
+                for (const notes of progression) {
+                    await this.playChord(notes, octave, duration);
+                }
         
+        */
+
+
+
     }
 });
+
+import SonarParser from "./modules/SonarParser.js";
+
+// fetch sonar/test.snr
+
+const sonarParser = new SonarParser();
+
+const sonar = await fetch("all/modules/sonar/test.snr").then(res => res.text());
+const parsed = sonarParser.parse(sonar);
+console.log(parsed);
