@@ -49,6 +49,20 @@ function setupPianoRoll() {
     extendedKeyPlace();
 }
 
+const actionStack = [];
+
+function addToActionStack(action, element, ...args) {
+    const validActions = ['add', 'remove', 'move', 'lengthen', 'shorten'];
+    actionStack.push({ action, element, args });
+}
+
+function undo() {
+    
+}
+function redo() {
+
+}
+
 // =======================
 // Constants
 // =======================
@@ -58,6 +72,25 @@ const GRID = {
     NOTE_HEIGHT: 20,
     MIN_WIDTH: 30,
     RESIZE_HANDLE: 6
+};
+
+// =======================
+// Hotkeys
+// =======================
+
+const HOTKEYS = {
+    MULTI_SELECT: e => e.shiftKey,
+    MARQUEE_SELECT: e => e.ctrlKey || e.metaKey,
+    DELETE: e => e.key === 'Delete' || e.key === 'Backspace',
+    CLEAR_SELECTION: e => e.key === 'Escape',
+
+    MOVE_UP: e => e.key === 'w' || e.key === 'W',
+    MOVE_DOWN: e => e.key === 's' || e.key === 'S',
+    MOVE_LEFT: e => e.key === 'a' || e.key === 'A',
+    MOVE_RIGHT: e => e.key === 'd' || e.key === 'D',
+
+    UNDO: e => e.key === 'z' || e.key === 'Z',
+    REDO: e => e.key === 'y' || e.key === 'Y'
 };
 
 // =======================
@@ -91,8 +124,6 @@ function createNote({ x, y, noteName }) {
     n.style.top = y + 'px';
     n.style.width = GRID.BEAT_WIDTH + 'px';
     n.style.height = GRID.NOTE_HEIGHT + 'px';
-    n.style.background = '#4a9eff';
-    n.style.border = '1px solid #2070d0';
     n.dataset.note = noteName;
     return n;
 }
@@ -114,14 +145,17 @@ function selectExclusive(note) {
     note.classList.add('selected');
 }
 
-function toggleSelection(note) {
-    if (selectedNotes.has(note)) {
-        selectedNotes.delete(note);
-        note.classList.remove('selected');
-    } else {
-        selectedNotes.add(note);
-        note.classList.add('selected');
-    }
+function addSelection(note) {
+    selectedNotes.add(note);
+    note.classList.add('selected');
+}
+
+function getNotesInRect(x1, y1, x2, y2) {
+    const notes = document.querySelectorAll('.note');
+    return Array.from(notes).filter(n => {
+        const r = n.getBoundingClientRect();
+        return r.left <= x2 && r.right >= x1 && r.top <= y2 && r.bottom >= y1;
+    });
 }
 
 // =======================
@@ -129,11 +163,11 @@ function toggleSelection(note) {
 // =======================
 
 const state = {
-    mode: null,        // drag | resize
-    anchor: null,
+    mode: null, // drag | resize | marquee
     startMouseX: 0,
     startMouseY: 0,
-    snapshot: []       // frozen list
+    snapshot: [],
+    marquee: null
 };
 
 // =======================
@@ -161,32 +195,56 @@ function extendedKeyPlace() {
         const snapped = snapToGrid(pos.x, pos.y);
         const t = e.target;
 
+        // =======================
+        // MARQUEE SELECT (CTRL)
+        // =======================
+
+        if (HOTKEYS.MARQUEE_SELECT(e)) {
+            state.mode = 'marquee';
+            state.startMouseX = pos.x;
+            state.startMouseY = pos.y;
+
+            state.marquee = document.createElement('div');
+            state.marquee.className = 'marquee';
+            state.marquee.style.position = 'absolute';
+            state.marquee.style.border = '1px dashed #4a9eff';
+            state.marquee.style.background = 'rgba(74,158,255,0.15)';
+            grid.appendChild(state.marquee);
+            return;
+        }
+
+        // =======================
+        // CLICK EXISTING NOTE
+        // =======================
+
         if (t.classList.contains('note')) {
 
-            // SELECTION FIRST (CRITICAL)
-            if (e.shiftKey) toggleSelection(t);
-            else selectExclusive(t);
+            if (!selectedNotes.has(t)) {
+                if (HOTKEYS.MULTI_SELECT(e)) addSelection(t);
+                else selectExclusive(t);
+            }
 
             const rect = t.getBoundingClientRect();
             state.mode =
                 rect.right - e.clientX <= GRID.RESIZE_HANDLE ? 'resize' : 'drag';
 
-            state.anchor = t;
             state.startMouseX = pos.x;
             state.startMouseY = pos.y;
 
-            // FREEZE SNAPSHOT AFTER SELECTION
             state.snapshot = [...selectedNotes].map(n => ({
                 note: n,
                 left: parseFloat(n.style.left),
                 top: parseFloat(n.style.top),
                 width: parseFloat(n.style.width)
             }));
-
             return;
         }
 
-        clearSelection();
+        // =======================
+        // CLICK EMPTY GRID
+        // =======================
+
+        if (!HOTKEYS.MULTI_SELECT(e)) clearSelection();
 
         const idx = Math.floor(snapped.y / GRID.NOTE_HEIGHT);
         const noteName = pianoKeys.children[idx]?.textContent;
@@ -194,10 +252,11 @@ function extendedKeyPlace() {
 
         const n = createNote({ x: snapped.x, y: snapped.y, noteName });
         grid.appendChild(n);
-        selectExclusive(n);
+
+        if (HOTKEYS.MULTI_SELECT(e)) addSelection(n);
+        else selectExclusive(n);
 
         state.mode = 'resize';
-        state.anchor = n;
         state.startMouseX = snapped.x;
 
         state.snapshot = [{
@@ -216,7 +275,6 @@ function extendedKeyPlace() {
         if (state.mode === 'drag') {
             const dx = snapToGrid(pos.x - state.startMouseX, 0).x;
             const dy = snapToGrid(0, pos.y - state.startMouseY).y;
-
             state.snapshot.forEach(s => {
                 s.note.style.left = s.left + dx + 'px';
                 s.note.style.top = s.top + dy + 'px';
@@ -224,32 +282,74 @@ function extendedKeyPlace() {
         }
 
         if (state.mode === 'resize') {
-            const delta =
-                snapToGrid(pos.x - state.startMouseX, 0).x;
-
+            const delta = snapToGrid(pos.x - state.startMouseX, 0).x;
             state.snapshot.forEach(s => {
                 s.note.style.width =
                     Math.max(s.width + delta, GRID.MIN_WIDTH) + 'px';
             });
         }
+
+        if (state.mode === 'marquee') {
+            const x = Math.min(state.startMouseX, pos.x);
+            const y = Math.min(state.startMouseY, pos.y);
+            const w = Math.abs(pos.x - state.startMouseX);
+            const h = Math.abs(pos.y - state.startMouseY);
+
+            Object.assign(state.marquee.style, {
+                left: x + 'px',
+                top: y + 'px',
+                width: w + 'px',
+                height: h + 'px'
+            });
+        }
     });
 
     rollArea.addEventListener('mouseup', () => {
+        if (state.mode === 'marquee') {
+            const r = state.marquee.getBoundingClientRect();
+            state.marquee.remove();
+            state.marquee = null;
+
+            clearSelection();
+            getNotesInRect(r.left, r.top, r.right, r.bottom)
+                .forEach(addSelection);
+        }
+
         state.mode = null;
-        state.anchor = null;
         state.snapshot = [];
     });
 }
 
 // =======================
-// Delete
+// Delete / Clear / Move
 // =======================
 
 document.addEventListener('keydown', e => {
-    if (e.key === "Escape") clearSelection();
-    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-    selectedNotes.forEach(n => n.remove());
-    selectedNotes.clear();
+    if (HOTKEYS.CLEAR_SELECTION(e)) clearSelection();
+
+    if (HOTKEYS.DELETE(e)) {
+        selectedNotes.forEach(n => n.remove());
+        selectedNotes.clear();
+        return;
+    }
+
+    let dx = 0;
+    let dy = 0;
+
+    if (HOTKEYS.MOVE_LEFT(e)) dx = -GRID.BEAT_WIDTH;
+    if (HOTKEYS.MOVE_RIGHT(e)) dx = GRID.BEAT_WIDTH;
+    if (HOTKEYS.MOVE_UP(e)) dy = -GRID.NOTE_HEIGHT;
+    if (HOTKEYS.MOVE_DOWN(e)) dy = GRID.NOTE_HEIGHT;
+
+    if(HOTKEYS.UNDO(e)) undo();
+    if(HOTKEYS.REDO(e)) redo();
+
+    if (dx !== 0 || dy !== 0) {
+        selectedNotes.forEach(n => {
+            n.style.left = parseFloat(n.style.left) + dx + 'px';
+            n.style.top = parseFloat(n.style.top) + dy + 'px';
+        });
+    }
 });
 
 // =======================
