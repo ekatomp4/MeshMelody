@@ -170,9 +170,9 @@ window.addEventListener("click", async () => {
         // }
 
 
-        const instr = SoundPlayer.getInstrument("piano");
-        sheet.setInstrument(instr);
-        sheet.play();
+        // const instr = SoundPlayer.getInstrument("piano");
+        // sheet.setInstrument(instr);
+        // sheet.play();
 
         /*   
         in instr

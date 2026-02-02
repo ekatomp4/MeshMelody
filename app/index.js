@@ -122,3 +122,12 @@ app.use((req, res) => {
 app.listen(CONFIG.PORT, () => {
     console.log('Server started on http://localhost:' + CONFIG.PORT);
 });
+
+
+// inter language connection test
+import interLangConnection from './backend/interLangConnection/interLandConnection.js';
+const csProcess = new interLangConnection({
+    path: path.join(__dirname, 'backend', 'interLangConnection', 'tempApp')
+});
+csProcess.runTest();
+csProcess.run().then((result) => console.log(result, "result"));
