@@ -57,7 +57,7 @@ function addToActionStack(action, element, ...args) {
 }
 
 function undo() {
-    
+
 }
 function redo() {
 
@@ -82,7 +82,7 @@ const HOTKEYS = {
     MULTI_SELECT: e => e.shiftKey,
     MARQUEE_SELECT: e => e.ctrlKey || e.metaKey,
     DELETE: e => e.key === 'Delete' || e.key === 'Backspace',
-    CLEAR_SELECTION: e => e.key === 'Escape',
+    CLEAR_SELECTION: e => e.key === 'Escape' || e.key === 'q' || e.key === 'Q',
 
     MOVE_UP: e => e.key === 'w' || e.key === 'W',
     MOVE_DOWN: e => e.key === 's' || e.key === 'S',
@@ -169,6 +169,8 @@ const state = {
     snapshot: [],
     marquee: null
 };
+
+
 
 // =======================
 // Interaction Logic
@@ -318,6 +320,7 @@ function extendedKeyPlace() {
         state.mode = null;
         state.snapshot = [];
     });
+
 }
 
 // =======================
@@ -341,8 +344,8 @@ document.addEventListener('keydown', e => {
     if (HOTKEYS.MOVE_UP(e)) dy = -GRID.NOTE_HEIGHT;
     if (HOTKEYS.MOVE_DOWN(e)) dy = GRID.NOTE_HEIGHT;
 
-    if(HOTKEYS.UNDO(e)) undo();
-    if(HOTKEYS.REDO(e)) redo();
+    if (HOTKEYS.UNDO(e)) undo();
+    if (HOTKEYS.REDO(e)) redo();
 
     if (dx !== 0 || dy !== 0) {
         selectedNotes.forEach(n => {
@@ -355,5 +358,6 @@ document.addEventListener('keydown', e => {
 // =======================
 // Init
 // =======================
+
 
 setupPianoRoll();

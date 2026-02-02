@@ -1,13 +1,17 @@
 import { exec } from "child_process";
+import { resolve } from "dns";
 import path from "path";
+
+const __dirname = path.dirname(import.meta.url);
 
 class interLangConnection {
     constructor(config = {}) {
         if (!config.path) throw new Error("No path provided");
 
+        const splitPath = config.path.split(".");
         this.config = {
             path: config.path,
-            extension: config.path.split(".").pop(),
+            extension: splitPath[splitPath.length - 1],
             ...config
         };
     }
@@ -23,7 +27,6 @@ class interLangConnection {
             });
         });
     }
-    
 
 
     async runTest() {
@@ -34,18 +37,26 @@ class interLangConnection {
 
 
     async run(args = []) {
+
+        const projectDir = this.config.path.replaceAll("\\", "\\\\");
+        const cmdFormattedArgs = args.map((arg) => `"${arg}"`).join(" ");
+        console.log(`Running ${this.config.extension} file: ${projectDir}`);
+
         switch (this.config.extension) {
             case "cs": {
-                const projectDir = this.config.path; // folder containing .csproj
-                const result = await this.runScript(`dotnet run -- ${args.join(" ")}`, {
-                    cwd: projectDir
-                });
+                const result = await this.runScript(`dotnet run ${projectDir} ${cmdFormattedArgs}`);
                 return result;
+            }
+            case "java": {
+                const result = await this.runScript(`java ${projectDir} ${cmdFormattedArgs}`);
+                return result;
+            }
+            default: {
+                throw new Error(`Unsupported extension: ${this.config.extension}`);
             }
         }
     }
 
-    // check for streaming
 
 }
 

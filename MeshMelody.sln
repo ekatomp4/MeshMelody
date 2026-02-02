@@ -1,0 +1,35 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "app", "app", "{F95F473B-E98A-ACD6-1986-755F447BE36F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{F1C03477-FB42-63FE-39FD-AEF02E061287}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "interLangConnection", "interLangConnection", "{3383DAB1-1A6F-AACE-D87F-98D8720747B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tempApp", "app\backend\interLangConnection\tempApp\tempApp.csproj", "{F50FF7A2-462C-C954-540F-8AF084E433AC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F50FF7A2-462C-C954-540F-8AF084E433AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F50FF7A2-462C-C954-540F-8AF084E433AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F50FF7A2-462C-C954-540F-8AF084E433AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F50FF7A2-462C-C954-540F-8AF084E433AC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F1C03477-FB42-63FE-39FD-AEF02E061287} = {F95F473B-E98A-ACD6-1986-755F447BE36F}
+		{3383DAB1-1A6F-AACE-D87F-98D8720747B0} = {F1C03477-FB42-63FE-39FD-AEF02E061287}
+		{F50FF7A2-462C-C954-540F-8AF084E433AC} = {3383DAB1-1A6F-AACE-D87F-98D8720747B0}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {513D603C-163B-4405-8F74-9864408FE19E}
+	EndGlobalSection
+EndGlobal

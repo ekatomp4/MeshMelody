@@ -17,6 +17,7 @@ import Socket from './backend/Socket.js';
 Socket.init(app, CONFIG.WS_PORT);
 
 
+
 app.use(express.static(path.join(__dirname, 'frontend')));
 
 /* =========================
@@ -25,7 +26,7 @@ app.use(express.static(path.join(__dirname, 'frontend')));
 
 import APIRoutes from './backend/api/APIRoutes.js';
 import { doesConnectionExist, getConnection } from './backend/classes/ws/Connection.js';
-import { get } from 'http';
+
 for(const route in APIRoutes) {
 
     if(APIRoutes[route].method === "POST") {
@@ -125,9 +126,13 @@ app.listen(CONFIG.PORT, () => {
 
 
 // inter language connection test
-import interLangConnection from './backend/interLangConnection/interLandConnection.js';
+import interLangConnection from './backend/interLangConnection/interLangConnection.js';
+
 const csProcess = new interLangConnection({
-    path: path.join(__dirname, 'backend', 'interLangConnection', 'tempApp')
+    path: path.join(__dirname, 'backend', 'interLangConnection', 'tests', 'test.java'),
 });
-csProcess.runTest();
-csProcess.run().then((result) => console.log(result, "result"));
+// csProcess.runTest();
+csProcess.run(["Hello", "World"]).then(console.log);
+
+
+// csProcess.runScript(`java C:\\Users\\evan.schaus\\Documents\\Projects\\MeshMelody\\app\\backend\\interLangConnection\\tests\\test.java`).then(console.log);
