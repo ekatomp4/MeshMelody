@@ -12,6 +12,7 @@ const state = {
     currentMouseY: 0,
     snapshot: [],
     pressedKeys: {},
+    last3Keys: [],
     marquee: null,
     clipboard: null
 };
@@ -96,6 +97,93 @@ const GRID = {
 // Hotkeys
 // =======================
 
+
+const KEY_GESTURES = {
+
+    ////////
+    //  align = a
+    ///////
+
+    // start align
+    "shift-a-s": () => {
+        selectedNotes.forEach(n => {
+            // align each note to start of leftmost selected note
+            let min = Infinity;
+            selectedNotes.forEach(n2 => {
+                const x = parseFloat(n2.style.left);
+                if (x < min) min = x;
+            });
+            n.style.left = min + 'px';
+        })
+    },
+    // end align incorporating width
+    "shift-a-w": () => {
+        selectedNotes.forEach(n => {
+            // align each note to end of rightmost selected note
+            let max = -Infinity;
+            selectedNotes.forEach(n2 => {
+                const x = parseFloat(n2.style.left) + parseFloat(n2.style.width);
+                if (x > max) max = x;
+            });
+            n.style.left = max - parseFloat(n.style.width) + 'px';
+        })
+    },
+    // end align hard: align start of each note to end of rightmost note
+    // end align hard: align start of each note to start of rightmost note
+    "shift-a-e": () => {
+        let rightmostStart = -Infinity;
+
+        // find the start (left) of the rightmost note
+        selectedNotes.forEach(n => {
+            const left = parseFloat(n.style.left);
+            if (left > rightmostStart) rightmostStart = left;
+        });
+
+        // move each note so its start aligns with rightmostStart
+        selectedNotes.forEach(n => {
+            n.style.left = rightmostStart + 'px';
+        });
+    },
+    // center align: align all selected notes to the average center
+    "shift-a-c": () => {
+        if (selectedNotes.size === 0) return;
+
+        // calculate average center
+        let totalCenter = 0;
+        selectedNotes.forEach(n => {
+            const left = parseFloat(n.style.left);
+            const width = parseFloat(n.style.width);
+            totalCenter += left + width / 2;
+        });
+        const avgCenter = totalCenter / selectedNotes.size;
+
+        // move each note so its center aligns with avgCenter, snapped to grid
+        selectedNotes.forEach(n => {
+            const width = parseFloat(n.style.width);
+            const newLeft = snapToGrid(avgCenter - width / 2, 0).x; // snap x only
+            n.style.left = newLeft + 'px';
+        });
+    },
+
+    ////////
+    //  ordering = c
+    ///////
+
+
+    // reverse order of notes horizontally: shift-c-d
+    "shift-c-d": () => {
+        const notesArr = [...selectedNotes].sort((a, b) => parseFloat(a.style.left) - parseFloat(b.style.left));
+        const positions = notesArr.map(n => parseFloat(n.style.left));
+        notesArr.reverse().forEach((n, i) => {
+            n.style.left = positions[i] + 'px';
+        });
+    }
+
+    ////////
+    //  selection = s
+    ///////
+
+}
 const HOTKEYS = {
     MULTI_SELECT: e => e.shiftKey,
     MARQUEE_SELECT: e => e.ctrlKey || e.metaKey,
@@ -107,8 +195,8 @@ const HOTKEYS = {
     MOVE_LEFT: e => (e.key === 'a' || e.key === 'A') && !(e.shiftKey),
     MOVE_RIGHT: e => (e.key === 'd' || e.key === 'D') && !(e.shiftKey),
 
-    LENGTHEN: e => e.key === 'e' || e.key === 'E',
-    SHORTEN: e => e.key === 'q' || e.key === 'Q',
+    LENGTHEN: e => (e.key === 'e' || e.key === 'E') && !(e.shiftKey),
+    SHORTEN: e => (e.key === 'q' || e.key === 'Q') && !(e.shiftKey),
 
     UNDO: e => e.key === 'z' || e.key === 'Z',
     REDO: e => e.key === 'y' || e.key === 'Y',
@@ -389,7 +477,6 @@ function extendedKeyPlace() {
     rollArea.addEventListener('mousemove', e => {
         state.currentMouseX = e.clientX;
         state.currentMouseY = e.clientY;
-        console.log(state.currentMouseX, state.currentMouseY);
 
         if (!state.mode) return;
 
@@ -434,7 +521,7 @@ function extendedKeyPlace() {
             state.marquee = null;
 
             // TODO: only clear if shift is not pressed
-            if(!state.pressedKeys['Shift']) {
+            if (!state.pressedKeys['Shift']) {
                 clearSelection();
             }
 
@@ -452,7 +539,27 @@ function extendedKeyPlace() {
 // Delete / Clear / Move
 // =======================
 
+
 document.addEventListener('keydown', e => {
+
+    if (state.last3Keys[state.last3Keys.length - 1] === e.key.toLowerCase()) {
+        return;
+    }
+    state.last3Keys.push(e.key.toLowerCase());
+    state.last3Keys = state.last3Keys.slice(-3);
+    // console.log(state.last3Keys);
+
+    for (const key in KEY_GESTURES) {
+        // example shift-a-s
+        console.log(state.last3Keys.join('-'), key);
+        if (state.last3Keys.join('-') === key) {
+            KEY_GESTURES[key]();
+            // clear and return
+            state.last3Keys = [];
+            return;
+        }
+    }
+
     state.pressedKeys[e.key] = true;
 
     if (HOTKEYS.CLEAR_SELECTION(e)) clearSelection();
@@ -463,20 +570,20 @@ document.addEventListener('keydown', e => {
         return;
     }
 
-    if(HOTKEYS.DUPLICATE(e)) duplicateNotes(selectedNotes);
+    if (HOTKEYS.DUPLICATE(e)) duplicateNotes(selectedNotes);
 
-    if(HOTKEYS.SAVE(e)) {
+    if (HOTKEYS.SAVE(e)) {
         const data = getDataFromGUI();
         console.log(data);
     }
 
-    if(HOTKEYS.COPY(e)) {
+    if (HOTKEYS.COPY(e)) {
         copy_selection();
     }
-    if(HOTKEYS.PASTE(e)) {
+    if (HOTKEYS.PASTE(e)) {
         paste_selection();
     }
-    if(HOTKEYS.CUT(e)) {
+    if (HOTKEYS.CUT(e)) {
         cut_selection();
     }
 
@@ -496,17 +603,17 @@ document.addEventListener('keydown', e => {
             HOTKEYS.LENGTHEN(e)
                 ? GRID.BEAT_WIDTH
                 : -GRID.BEAT_WIDTH;
-    
+
         selectedNotes.forEach(n => {
             const w = parseFloat(n.style.width);
             const next = Math.max(w + delta, GRID.MIN_WIDTH);
             n.style.width = next + 'px';
         });
-    
+
         e.preventDefault();
         return;
     }
-    
+
 
     if (dx !== 0 || dy !== 0) {
         selectedNotes.forEach(n => {
@@ -524,9 +631,7 @@ document.addEventListener('keyup', e => {
 // Init
 // =======================
 
-
 setupPianoRoll();
-
 
 
 // =======================
@@ -537,8 +642,8 @@ function getNotePropByData(x, y, width, height) {
     const pianoKeys = document.getElementById('piano-keys');
     const idx = Math.floor(y / GRID.NOTE_HEIGHT);
     const noteName = pianoKeys.children[idx]?.textContent;
-    return { 
-        noteName, 
+    return {
+        noteName,
         x, y, width, height,
         xIndex: Math.floor(x / GRID.BEAT_WIDTH), // sarts at 0
         yIndex: Math.floor(y / GRID.NOTE_HEIGHT), // starts at 0
@@ -558,7 +663,7 @@ function getDataFromGUI() {
         const r = n.getBoundingClientRect();
 
         const x = r.left - gridRect.left + rollArea.scrollLeft;
-        const y = r.top  - gridRect.top  + rollArea.scrollTop;
+        const y = r.top - gridRect.top + rollArea.scrollTop;
 
         return getNotePropByData(
             Math.round(x),
