@@ -129,10 +129,10 @@ app.listen(CONFIG.PORT, () => {
 import interLangConnection from './backend/interLangConnection/interLangConnection.js';
 
 const csProcess = new interLangConnection({
+    // path: path.join(__dirname, 'backend', 'interLangConnection', 'tests', 'test.java'),
     path: path.join(__dirname, 'backend', 'interLangConnection', 'tests', 'test.java'),
 });
 // csProcess.runTest();
 csProcess.run(["Hello", "World"]).then(console.log);
 
 
-// csProcess.runScript(`java C:\\Users\\evan.schaus\\Documents\\Projects\\MeshMelody\\app\\backend\\interLangConnection\\tests\\test.java`).then(console.log);

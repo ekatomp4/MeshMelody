@@ -1,3 +1,21 @@
+
+// =======================
+// Interaction State
+// =======================
+
+
+const state = {
+    mode: null, // drag | resize | marquee
+    startMouseX: 0,
+    startMouseY: 0,
+    currentMouseX: 0,
+    currentMouseY: 0,
+    snapshot: [],
+    pressedKeys: {},
+    marquee: null,
+    clipboard: null
+};
+
 // =======================
 // Piano Roll Setup
 // =======================
@@ -81,16 +99,41 @@ const GRID = {
 const HOTKEYS = {
     MULTI_SELECT: e => e.shiftKey,
     MARQUEE_SELECT: e => e.ctrlKey || e.metaKey,
-    DELETE: e => e.key === 'Delete' || e.key === 'Backspace',
-    CLEAR_SELECTION: e => e.key === 'Escape' || e.key === 'q' || e.key === 'Q',
+    DELETE: e => (e.key === 'Delete' || e.key === 'Backspace' || e.key === 'x' || e.key === 'X') && !(e.shiftKey),
+    CLEAR_SELECTION: e => e.key === 'Escape' || e.key === 'f' || e.key === 'F',
 
-    MOVE_UP: e => e.key === 'w' || e.key === 'W',
-    MOVE_DOWN: e => e.key === 's' || e.key === 'S',
-    MOVE_LEFT: e => e.key === 'a' || e.key === 'A',
-    MOVE_RIGHT: e => e.key === 'd' || e.key === 'D',
+    MOVE_UP: e => (e.key === 'w' || e.key === 'W') && !(e.shiftKey),
+    MOVE_DOWN: e => (e.key === 's' || e.key === 'S') && !(e.shiftKey),
+    MOVE_LEFT: e => (e.key === 'a' || e.key === 'A') && !(e.shiftKey),
+    MOVE_RIGHT: e => (e.key === 'd' || e.key === 'D') && !(e.shiftKey),
+
+    LENGTHEN: e => e.key === 'e' || e.key === 'E',
+    SHORTEN: e => e.key === 'q' || e.key === 'Q',
 
     UNDO: e => e.key === 'z' || e.key === 'Z',
-    REDO: e => e.key === 'y' || e.key === 'Y'
+    REDO: e => e.key === 'y' || e.key === 'Y',
+
+    // extra
+    DUPLICATE: e => (e.shiftKey) && (e.key === 'd' || e.key === 'D'),
+    COPY: e => (e.shiftKey) && (e.key === 'c' || e.key === 'C'),
+    PASTE: e => (e.shiftKey) && (e.key === 'v' || e.key === 'V'),
+    CUT: e => (e.shiftKey) && (e.key === 'x' || e.key === 'X'),
+
+
+    // include later
+    // align width
+    // align note start
+    // align start measure
+    // align end measure
+    // align to mouse pos
+    // up octave
+    // down octave
+
+
+    // control s
+    SAVE: (e) => {
+        return (e.shiftKey) && (e.key === 's' || e.key === 'S');
+    }
 };
 
 // =======================
@@ -116,17 +159,101 @@ function getLocalPos(e, el) {
 // Note Factory
 // =======================
 
-function createNote({ x, y, noteName }) {
+function createNote({ x, y, noteName, widthIndex = 1 }) {
     const n = document.createElement('div');
     n.className = 'note';
     n.style.position = 'absolute';
     n.style.left = x + 'px';
     n.style.top = y + 'px';
-    n.style.width = GRID.BEAT_WIDTH + 'px';
+    n.style.width = GRID.BEAT_WIDTH * widthIndex + 'px';
     n.style.height = GRID.NOTE_HEIGHT + 'px';
     n.dataset.note = noteName;
     return n;
 }
+
+// ======================
+// Functionality
+// ======================
+
+function paste_selection() {
+    if (!state.clipboard || state.clipboard.length === 0) return;
+
+    const grid = document.getElementById('grid');
+    const rect = grid.getBoundingClientRect();
+
+    clearSelection();
+
+    // convert mouse to grid space
+    const mouseX = state.currentMouseX - rect.left + grid.scrollLeft;
+    const mouseY = state.currentMouseY - rect.top + grid.scrollTop;
+
+    const baseX = state.clipboard[0].x;
+    const baseY = state.clipboard[0].y;
+
+    state.clipboard.forEach(n => {
+        const snapped = snapToGrid(
+            mouseX + (n.x - baseX),
+            mouseY + (n.y - baseY)
+        );
+
+        const note = createNote({
+            x: snapped.x,
+            y: snapped.y,
+            widthIndex: n.widthIndex,
+            noteName: n.noteName
+        });
+
+        grid.appendChild(note);
+        addSelection(note);
+    });
+}
+
+
+
+function copy_selection() {
+    state.clipboard = [...selectedNotes].map(n => ({
+        x: parseFloat(n.style.left),
+        y: parseFloat(n.style.top),
+        widthIndex: parseFloat(n.style.width) / GRID.BEAT_WIDTH,
+        noteName: n.dataset.note
+    }));
+}
+
+
+function cut_selection() {
+    copy_selection();
+
+    selectedNotes.forEach(n => n.remove());
+    clearSelection();
+}
+
+
+function duplicateNotes(notesToDuplicate) {
+    const dupeOffsetX = GRID.BEAT_WIDTH;
+    const dupeOffsetY = GRID.NOTE_HEIGHT;
+
+    const grid = document.getElementById('grid');
+
+    const saved = [...notesToDuplicate];
+    clearSelection();
+
+    saved.forEach(n => {
+        const x = parseFloat(n.style.left);
+        const y = parseFloat(n.style.top);
+        const widthIndex = parseInt(n.style.width) / GRID.BEAT_WIDTH;
+
+        const note = createNote({
+            x: x + dupeOffsetX,
+            y: y + dupeOffsetY,
+            widthIndex,
+            noteName: n.dataset.note
+        });
+
+        grid.appendChild(note);
+        addSelection(note);
+    });
+}
+
 
 // =======================
 // Selection
@@ -158,17 +285,6 @@ function getNotesInRect(x1, y1, x2, y2) {
     });
 }
 
-// =======================
-// Interaction State
-// =======================
-
-const state = {
-    mode: null, // drag | resize | marquee
-    startMouseX: 0,
-    startMouseY: 0,
-    snapshot: [],
-    marquee: null
-};
 
 
 
@@ -182,6 +298,7 @@ function extendedKeyPlace() {
     const grid = document.getElementById('grid');
 
     rollArea.addEventListener('mousemove', e => {
+
         const t = e.target;
         if (!t.classList.contains('note')) {
             rollArea.style.cursor = 'default';
@@ -270,6 +387,10 @@ function extendedKeyPlace() {
     });
 
     rollArea.addEventListener('mousemove', e => {
+        state.currentMouseX = e.clientX;
+        state.currentMouseY = e.clientY;
+        console.log(state.currentMouseX, state.currentMouseY);
+
         if (!state.mode) return;
 
         const pos = getLocalPos(e, rollArea);
@@ -312,7 +433,11 @@ function extendedKeyPlace() {
             state.marquee.remove();
             state.marquee = null;
 
-            clearSelection();
+            // TODO: only clear if shift is not pressed
+            if(!state.pressedKeys['Shift']) {
+                clearSelection();
+            }
+
             getNotesInRect(r.left, r.top, r.right, r.bottom)
                 .forEach(addSelection);
         }
@@ -328,12 +453,31 @@ function extendedKeyPlace() {
 // =======================
 
 document.addEventListener('keydown', e => {
+    state.pressedKeys[e.key] = true;
+
     if (HOTKEYS.CLEAR_SELECTION(e)) clearSelection();
 
     if (HOTKEYS.DELETE(e)) {
         selectedNotes.forEach(n => n.remove());
         selectedNotes.clear();
         return;
+    }
+
+    if(HOTKEYS.DUPLICATE(e)) duplicateNotes(selectedNotes);
+
+    if(HOTKEYS.SAVE(e)) {
+        const data = getDataFromGUI();
+        console.log(data);
+    }
+
+    if(HOTKEYS.COPY(e)) {
+        copy_selection();
+    }
+    if(HOTKEYS.PASTE(e)) {
+        paste_selection();
+    }
+    if(HOTKEYS.CUT(e)) {
+        cut_selection();
     }
 
     let dx = 0;
@@ -347,6 +491,23 @@ document.addEventListener('keydown', e => {
     if (HOTKEYS.UNDO(e)) undo();
     if (HOTKEYS.REDO(e)) redo();
 
+    if (HOTKEYS.LENGTHEN(e) || HOTKEYS.SHORTEN(e)) {
+        const delta =
+            HOTKEYS.LENGTHEN(e)
+                ? GRID.BEAT_WIDTH
+                : -GRID.BEAT_WIDTH;
+    
+        selectedNotes.forEach(n => {
+            const w = parseFloat(n.style.width);
+            const next = Math.max(w + delta, GRID.MIN_WIDTH);
+            n.style.width = next + 'px';
+        });
+    
+        e.preventDefault();
+        return;
+    }
+    
+
     if (dx !== 0 || dy !== 0) {
         selectedNotes.forEach(n => {
             n.style.left = parseFloat(n.style.left) + dx + 'px';
@@ -355,9 +516,59 @@ document.addEventListener('keydown', e => {
     }
 });
 
+document.addEventListener('keyup', e => {
+    state.pressedKeys[e.key] = false;
+});
+
 // =======================
 // Init
 // =======================
 
 
 setupPianoRoll();
+
+
+
+// =======================
+// Utils
+// =======================
+
+function getNotePropByData(x, y, width, height) {
+    const pianoKeys = document.getElementById('piano-keys');
+    const idx = Math.floor(y / GRID.NOTE_HEIGHT);
+    const noteName = pianoKeys.children[idx]?.textContent;
+    return { 
+        noteName, 
+        x, y, width, height,
+        xIndex: Math.floor(x / GRID.BEAT_WIDTH), // sarts at 0
+        yIndex: Math.floor(y / GRID.NOTE_HEIGHT), // starts at 0
+        widthIndex: Math.floor(width / GRID.BEAT_WIDTH), // starts at 1
+        heightIndex: Math.floor(height / GRID.NOTE_HEIGHT) // starts at 1
+    };
+}
+
+function getDataFromGUI() {
+    const grid = document.getElementById('grid');
+    const rollArea = document.getElementById('roll-area');
+
+    const gridRect = grid.getBoundingClientRect();
+    const rollRect = rollArea.getBoundingClientRect();
+
+    return [...document.querySelectorAll('.note')].map(n => {
+        const r = n.getBoundingClientRect();
+
+        const x = r.left - gridRect.left + rollArea.scrollLeft;
+        const y = r.top  - gridRect.top  + rollArea.scrollTop;
+
+        return getNotePropByData(
+            Math.round(x),
+            Math.round(y),
+            Math.round(r.width),
+            Math.round(r.height)
+        );
+    });
+}
+
+
+
+
